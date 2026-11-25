@@ -34,7 +34,7 @@ public static class ProgressRingPngRenderer
             {
                 var dx = x + 0.5 - cx;
                 var dy = y + 0.5 - cy;
-                var dist = Math.Hypot(dx, dy);
+                var dist = Math.Sqrt(dx * dx + dy * dy);
 
                 byte r = 0, g = 0, b = 0, a = 0;
 
@@ -142,7 +142,7 @@ public static class ProgressRingPngRenderer
 
         // Running: tiny calm center dot
         var dotR = innerR * 0.22;
-        var d = Math.Hypot(dx, dy);
+        var d = Math.Sqrt(dx * dx + dy * dy);
         return SmoothStep(dotR + 0.6, dotR - 0.6, d);
     }
 
