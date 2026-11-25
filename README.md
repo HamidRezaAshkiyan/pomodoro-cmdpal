@@ -26,7 +26,7 @@ A minimal **Classic Pomodoro timer** (25m Focus / 5m Short Break / 15m Long Brea
 
 ## Build from Source (Windows 11)
 
-Requires [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) and Windows 10/11 SDK.
+Requires [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and Windows 10/11 SDK.
 
 ```powershell
 # Run tests, self-sign, build MSIX, and install
