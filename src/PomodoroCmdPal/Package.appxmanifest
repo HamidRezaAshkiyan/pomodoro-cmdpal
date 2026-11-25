@@ -10,7 +10,7 @@
   <Identity
     Name="PomodoroCmdPal"
     Publisher="CN=PomodoroCmdPalDev"
-    Version="0.1.0.0" />
+    Version="0.2.0.0" />
 
   <Properties>
     <DisplayName>Pomodoro Timer for Command Palette</DisplayName>

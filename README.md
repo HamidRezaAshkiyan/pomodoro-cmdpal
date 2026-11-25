@@ -1,14 +1,15 @@
 # PomodoroCmdPal
 
-A minimal **Classic Pomodoro timer** (25m Focus / 5m Short Break / 15m Long Break) built as a native **Windows 11 PowerToys Command Palette Dock** extension.
+A minimal **Pomodoro timer** built as a native **Windows 11 PowerToys Command Palette Dock** extension.
 
 ## Features
 
-- **Lives in the Command Palette Dock:** Displays a live `MM:SS` countdown (`25:00`) with a compact phase & cycle subtitle (`Focus • 1/4`, `Paused • Focus`, `Short Break • 1/4`) and dynamic Segoe Fluent status glyph.
-- **One-Click Controls:** Left-click the Dock band to **Start / Pause** instantly.
-- **Context Menu (`MoreCommands`):** Right-click the Dock band to **Reset Timer**, **Skip Phase**, jump directly to **Focus (25m)** / **Short Break (5m)** / **Long Break (15m)**, **Reset All Cycles**, or open the full **Pomodoro Controls** page.
-- **Native Windows 11 Notifications:** Fires a Windows Toast Notification with a reminder chime whenever a Focus or Break session finishes.
-- **Command Palette Search:** Also accessible anytime via `Win + Alt + Space` → `Pomodoro Timer`.
+- **Live Color-Coded Progress Ring in the Dock:** Anti-aliased progress ring that drains smoothly as your timer counts down — Coral Red (`Focus`), Mint Teal (`Short Break`), Calm Indigo (`Long Break`), and Warm Amber (`Paused`) — alongside a crisp `MM:SS` countdown and compact cycle subtitle (`Focus • 1/4`).
+- **One-Click & In-Flow Controls:** Left-click the Dock band to **Start / Pause** immediately; right-click (`MoreCommands`) for **`+5 min`**, **Reset Timer**, **Skip Phase**, direct phase switches, and **Open Pomodoro Controls**.
+- **Native Command Palette Settings:** Configure Focus / Short Break / Long Break durations, cycles before long break, auto-start next phase, and completion chime right inside PowerToys Command Palette's extension settings.
+- **Quick Presets:** Switch instantly between **Classic (25/5/15)**, **Deep Work (50/10/20)**, and **Sprint (15/3/10)**.
+- **Interactive Windows 11 Toast Notifications:** Click **Start Break**, **Start Focus**, or **+5 min Focus** directly from the completion notification.
+- **Daily Focus Stats:** Tracks completed focus sessions and total focus time today (persisted in `%LOCALAPPDATA%\PomodoroCmdPal\stats.json`, auto-resets daily).
 
 ## Requirements
 
@@ -32,10 +33,3 @@ Requires [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and Wi
 # Run tests, self-sign, build MSIX, and install
 .\scripts\build-and-install.ps1
 ```
-
-## Project Structure
-
-- `src/PomodoroCmdPal.Core/` — Pure .NET 9 Pomodoro state machine (`PomodoroEngine`, `PomodoroConfig`, `PomodoroSnapshot`).
-- `src/PomodoroCmdPal/` — Out-of-process COM/WinRT PowerToys Command Palette extension (`ICommandProvider3.GetDockBands()`, `PomodoroDockBandItem`, `PomodoroPage`, `NotificationService`).
-- `tests/PomodoroCmdPal.Core.Tests/` — xUnit tests covering full 4-cycle Pomodoro progression, pause/resume, reset, and phase switching.
-- `.github/workflows/build-msix.yml` — Automated Windows CI build, test, and MSIX GitHub Release pipeline.

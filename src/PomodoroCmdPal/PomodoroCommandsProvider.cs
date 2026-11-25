@@ -9,6 +9,7 @@ namespace PomodoroCmdPal;
 
 public sealed partial class PomodoroCommandsProvider : CommandProvider
 {
+    private readonly PomodoroSettingsManager _settingsManager;
     private readonly PomodoroEngine _engine;
     private readonly NotificationService _notifications;
     private readonly PomodoroPage _page;
@@ -21,11 +22,21 @@ public sealed partial class PomodoroCommandsProvider : CommandProvider
         DisplayName = "Pomodoro Timer";
         Icon = new IconInfo("\uE916");
 
-        _engine = new PomodoroEngine(new PomodoroConfig());
-        _notifications = new NotificationService();
-        _engine.PhaseCompleted += OnPhaseCompleted;
+        _settingsManager = new PomodoroSettingsManager();
+        Settings = _settingsManager.Settings;
 
-        _page = new PomodoroPage(_engine);
+        var statsPath = Path.Combine(PomodoroSettingsManager.GetDataDirectory(), "stats.json");
+        var statsStore = new JsonFileStatsStore(statsPath);
+
+        _engine = new PomodoroEngine(_settingsManager.BuildConfig(), statsStore: statsStore);
+        _notifications = new NotificationService(
+            onStartNext: () => _engine.Start(),
+            onBonusFocusFiveMinutes: () => _engine.StartBonusFocus(TimeSpan.FromMinutes(5)));
+
+        _engine.PhaseCompleted += OnPhaseCompleted;
+        _settingsManager.ConfigChanged += OnConfigChanged;
+
+        _page = new PomodoroPage(_engine, preset => _settingsManager.ApplyPreset(preset));
         _dockBand = new PomodoroDockBandItem(_engine, _page);
 
         _topLevelCommands =
@@ -33,7 +44,7 @@ public sealed partial class PomodoroCommandsProvider : CommandProvider
             new CommandItem(_page)
             {
                 Title = "Pomodoro Timer",
-                Subtitle = "Minimal Pomodoro timer (25/5/15) for the Command Palette Dock",
+                Subtitle = "Minimal Pomodoro timer with live Dock progress ring, presets & daily stats",
                 Icon = new IconInfo("\uE916")
             },
             _dockBand
@@ -51,13 +62,24 @@ public sealed partial class PomodoroCommandsProvider : CommandProvider
         _ => null
     };
 
+    private void OnConfigChanged(PomodoroConfig config)
+    {
+        _engine.UpdateConfig(config, applyToCurrentIfIdle: true);
+        _dockBand.RefreshContextMenuLabels();
+    }
+
     private void OnPhaseCompleted(PomodoroPhase completedPhase, PomodoroPhase nextPhase)
     {
-        _notifications.NotifyPhaseCompleted(completedPhase, nextPhase, _engine.GetSnapshot());
+        _notifications.NotifyPhaseCompleted(
+            completedPhase,
+            nextPhase,
+            _engine.GetSnapshot(),
+            _engine.Config.EnableSound);
     }
 
     public override void Dispose()
     {
+        _settingsManager.ConfigChanged -= OnConfigChanged;
         _engine.PhaseCompleted -= OnPhaseCompleted;
         _dockBand.Dispose();
         _page.Dispose();

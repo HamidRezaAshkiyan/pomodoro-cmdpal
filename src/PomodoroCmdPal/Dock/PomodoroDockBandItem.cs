@@ -9,12 +9,15 @@ namespace PomodoroCmdPal.Dock;
 internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
 {
     private readonly PomodoroEngine _engine;
+    private readonly PomodoroPage _page;
+    private readonly DockIconRenderer _iconRenderer = new();
     private readonly PomodoroActionCommand _toggleCommand;
-    private readonly IContextItem[] _contextItems;
+    private (PomodoroPhase Phase, PomodoroState State, int Step)? _lastIconKey;
 
     public PomodoroDockBandItem(PomodoroEngine engine, PomodoroPage page)
     {
         _engine = engine;
+        _page = page;
 
         _toggleCommand = new PomodoroActionCommand(
             name: "Start / Pause Pomodoro",
@@ -23,9 +26,27 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
             id: "com.pomodorocmdpal.toggle");
 
         Command = _toggleCommand;
+        RebuildContextMenu();
 
-        _contextItems =
+        ApplySnapshot(_engine.GetSnapshot());
+        _engine.SnapshotChanged += ApplySnapshot;
+    }
+
+    public void RefreshContextMenuLabels()
+    {
+        RebuildContextMenu();
+    }
+
+    private void RebuildContextMenu()
+    {
+        var cfg = _engine.Config;
+        MoreCommands =
         [
+            new CommandContextItem(new PomodoroActionCommand(
+                "+5 min",
+                new IconInfo("\uE710"),
+                () => _engine.ExtendCurrentPhase(TimeSpan.FromMinutes(5)),
+                "com.pomodorocmdpal.extend5")),
             new CommandContextItem(new PomodoroActionCommand(
                 "Reset Timer",
                 new IconInfo("\uE72C"),
@@ -37,17 +58,17 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
                 () => _engine.SkipToNextPhase(),
                 "com.pomodorocmdpal.skip")),
             new CommandContextItem(new PomodoroActionCommand(
-                "Focus (25m)",
+                $"Focus ({cfg.FocusMinutes}m)",
                 new IconInfo("\uE916"),
                 () => _engine.SwitchPhase(PomodoroPhase.Focus, startImmediately: true),
                 "com.pomodorocmdpal.focus")),
             new CommandContextItem(new PomodoroActionCommand(
-                "Short Break (5m)",
+                $"Short Break ({cfg.ShortBreakMinutes}m)",
                 new IconInfo("\uEC32"),
                 () => _engine.SwitchPhase(PomodoroPhase.ShortBreak, startImmediately: true),
                 "com.pomodorocmdpal.shortbreak")),
             new CommandContextItem(new PomodoroActionCommand(
-                "Long Break (15m)",
+                $"Long Break ({cfg.LongBreakMinutes}m)",
                 new IconInfo("\uE708"),
                 () => _engine.SwitchPhase(PomodoroPhase.LongBreak, startImmediately: true),
                 "com.pomodorocmdpal.longbreak")),
@@ -56,37 +77,29 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
                 new IconInfo("\uE777"),
                 () => _engine.ResetAll(),
                 "com.pomodorocmdpal.resetall")),
-            new CommandContextItem(page)
+            new CommandContextItem(_page)
             {
                 Title = "Open Pomodoro Controls",
                 Icon = new IconInfo("\uE713")
             }
         ];
-
-        MoreCommands = _contextItems;
-
-        ApplySnapshot(_engine.GetSnapshot());
-        _engine.SnapshotChanged += ApplySnapshot;
     }
 
     private void ApplySnapshot(PomodoroSnapshot snapshot)
     {
         Title = snapshot.FormattedTime;
         Subtitle = snapshot.CompactSubtitle;
-        Icon = GetIconForSnapshot(snapshot);
         _toggleCommand.Name = snapshot.State == PomodoroState.Running
             ? "Pause Pomodoro"
             : "Start Pomodoro";
-    }
 
-    private static IconInfo GetIconForSnapshot(PomodoroSnapshot snapshot) => snapshot.State switch
-    {
-        PomodoroState.Running => snapshot.Phase == PomodoroPhase.Focus
-            ? new IconInfo("\uE769") // Pause glyph while actively running Focus
-            : new IconInfo("\uEC32"), // Coffee/break glyph while running Break
-        PomodoroState.Paused => new IconInfo("\uE768"), // Play glyph while paused
-        _ => new IconInfo("\uE916") // Stopwatch glyph while idle
-    };
+        var visualKey = _iconRenderer.GetVisualKey(snapshot);
+        if (_lastIconKey != visualKey)
+        {
+            _lastIconKey = visualKey;
+            Icon = _iconRenderer.CreateIcon(snapshot);
+        }
+    }
 
     public void Dispose()
     {

@@ -101,10 +101,13 @@ jobs:
             ### Minimal Pomodoro Timer for Windows 11 PowerToys Command Palette Dock
 
             **Features:**
-            - Live `MM:SS` countdown & cycle counter (`Focus • 1/4`) pinned directly to the PowerToys Command Palette Dock
-            - Classic Pomodoro cycle: **25m Focus / 5m Short Break / 15m Long Break** (every 4 cycles)
-            - Left-click Dock pill to **Start / Pause**; right-click for **Reset**, **Skip Phase**, and direct phase switching
-            - Native Windows 11 Toast Notifications with sound when a session finishes
+            - **Live Color-Coded Progress Ring Icon** directly in the PowerToys Command Palette Dock (Coral Red for Focus, Mint Teal for Short Break, Calm Indigo for Long Break, Warm Amber when Paused)
+            - Live `MM:SS` countdown & cycle counter (`Focus • 1/4`)
+            - **Native Command Palette Settings** for custom Focus / Short Break / Long Break durations, cycles, auto-start next phase, and completion sound toggle
+            - **Quick Presets:** Classic (`25/5/15`), Deep Work (`50/10/20`), and Sprint (`15/3/10`)
+            - **`+5 min` Extend** right from the Dock context menu or completion toast
+            - **Interactive Windows 11 Toast Notifications** with clickable **Start Break / Start Focus** and **+5 min Focus** buttons
+            - **Persisted Daily Focus Stats** (`Today: N sessions • Xm focused`)
 
             **Quick Install (Windows 11 + PowerToys 0.98+):**
             1. Download `PomodoroCmdPal-x64.msix` (or `ARM64`), `PomodoroCmdPalDev.cer`, and `install-from-release.ps1` into the same folder.
