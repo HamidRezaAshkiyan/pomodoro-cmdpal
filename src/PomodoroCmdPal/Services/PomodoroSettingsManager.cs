@@ -6,40 +6,40 @@ namespace PomodoroCmdPal.Services;
 internal sealed class PomodoroSettingsManager : JsonSettingsManager
 {
     private readonly TextSetting _focusMinutes = new(
-        key: "focusMinutes",
-        label: "Focus duration (minutes)",
-        description: "Length of a focus session in minutes (1–180).",
-        initialValue: "25");
+        "focusMinutes",
+        "Focus duration (minutes)",
+        "Length of a focus session in minutes (1–180).",
+        "25");
 
     private readonly TextSetting _shortBreakMinutes = new(
-        key: "shortBreakMinutes",
-        label: "Short break duration (minutes)",
-        description: "Length of a short break in minutes (1–60).",
-        initialValue: "5");
+        "shortBreakMinutes",
+        "Short break duration (minutes)",
+        "Length of a short break in minutes (1–60).",
+        "5");
 
     private readonly TextSetting _longBreakMinutes = new(
-        key: "longBreakMinutes",
-        label: "Long break duration (minutes)",
-        description: "Length of a long break after a full cycle in minutes (1–90).",
-        initialValue: "15");
+        "longBreakMinutes",
+        "Long break duration (minutes)",
+        "Length of a long break after a full cycle in minutes (1–90).",
+        "15");
 
     private readonly TextSetting _cyclesBeforeLongBreak = new(
-        key: "cyclesBeforeLongBreak",
-        label: "Focus cycles before long break",
-        description: "Number of focus sessions before taking a long break (1–12).",
-        initialValue: "4");
+        "cyclesBeforeLongBreak",
+        "Focus cycles before long break",
+        "Number of focus sessions before taking a long break (1–12).",
+        "4");
 
     private readonly ToggleSetting _autoStartNextPhase = new(
-        key: "autoStartNextPhase",
-        label: "Auto-start next phase",
-        description: "Automatically start breaks and focus sessions when the previous phase ends.",
-        initialValue: false);
+        "autoStartNextPhase",
+        "Auto-start next phase",
+        "Automatically start breaks and focus sessions when the previous phase ends.",
+        false);
 
     private readonly ToggleSetting _enableSound = new(
-        key: "enableSound",
-        label: "Play sound on completion",
-        description: "Play a Windows reminder chime when a focus or break timer completes.",
-        initialValue: true);
+        "enableSound",
+        "Play sound on completion",
+        "Play a Windows reminder chime when a focus or break timer completes.",
+        true);
 
     public event Action<PomodoroConfig>? ConfigChanged;
 
