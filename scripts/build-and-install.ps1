@@ -19,7 +19,12 @@ if (-not $SkipTests) {
     dotnet test $TestProjectPath -c $Configuration
 }
 
-if (-not (Test-Path $CertPfx)) {
+$cert = Get-ChildItem "Cert:\CurrentUser\My" |
+    Where-Object { $_.Subject -eq "CN=PomodoroCmdPalDev" } |
+    Sort-Object NotAfter -Descending |
+    Select-Object -First 1
+
+if (-not $cert) {
     Write-Host "Creating self-signed development certificate..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Force -Path $CertDir | Out-Null
     $cert = New-SelfSignedCertificate `
@@ -30,7 +35,6 @@ if (-not (Test-Path $CertPfx)) {
         -CertStoreLocation "Cert:\CurrentUser\My" `
         -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
 
-    Export-PfxCertificate -Cert $cert -FilePath $CertPfx -Password $CertPassword | Out-Null
     Export-Certificate -Cert $cert -FilePath $CertCer | Out-Null
     Write-Host "Importing certificate to LocalMachine\TrustedPeople (requires elevation if not already trusted)..." -ForegroundColor Yellow
     try {
@@ -46,8 +50,7 @@ dotnet build $ProjectPath `
     -p:Platform=$Platform `
     -p:GenerateAppxPackageOnBuild=true `
     -p:AppxPackageSigningEnabled=true `
-    -p:PackageCertificateKeyFile=$CertPfx `
-    -p:PackageCertificatePassword="PomodoroCmdPalDev!"
+    -p:PackageCertificateThumbprint="$($cert.Thumbprint)"
 
 $msix = Get-ChildItem -Path (Join-Path $RepoRoot "src\PomodoroCmdPal\AppPackages") -Filter "*.msix" -Recurse |
     Sort-Object LastWriteTime -Descending |
