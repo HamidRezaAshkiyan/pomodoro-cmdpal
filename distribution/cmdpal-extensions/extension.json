@@ -1,0 +1,21 @@
+{
+  "id": "HamidRezaAshkiyan.PomodoroCmdPal",
+  "name": "Pomodoro Timer",
+  "publisher": "HamidReza Ashkiyan",
+  "description": "Minimal Pomodoro timer living in the Windows 11 PowerToys Command Palette Dock with live color-coded progress ring, focus labels, presets, +5m extend, interactive toasts, and daily focus streaks.",
+  "repository": "https://github.com/HamidRezaAshkiyan/pomodoro-cmdpal",
+  "license": "MIT",
+  "tags": [
+    "pomodoro",
+    "timer",
+    "productivity",
+    "dock",
+    "focus",
+    "windows-commandpalette-extension"
+  ],
+  "dockSupported": true,
+  "install": {
+    "wingetId": "HamidRezaAshkiyan.PomodoroCmdPal",
+    "storeId": "REPLACE_WITH_MICROSOFT_STORE_PRODUCT_ID"
+  }
+}

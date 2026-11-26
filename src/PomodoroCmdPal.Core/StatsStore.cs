@@ -28,12 +28,9 @@ public sealed class JsonFileStatsStore : IStatsStore
 
             var json = File.ReadAllText(_filePath);
             var loaded = JsonSerializer.Deserialize<DailyFocusStats>(json);
-            if (loaded is null || loaded.Date != today)
-            {
-                return DailyFocusStats.Empty(today);
-            }
-
-            return loaded;
+            return loaded is null
+                ? DailyFocusStats.Empty(today)
+                : loaded.ForDate(today);
         }
         catch
         {

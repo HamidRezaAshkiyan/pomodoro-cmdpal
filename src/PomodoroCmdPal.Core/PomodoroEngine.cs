@@ -13,6 +13,7 @@ public sealed class PomodoroEngine : IDisposable
     private TimeSpan _remaining;
     private TimeSpan _currentPhaseTotal;
     private int _completedFocusCycles;
+    private string? _focusLabel;
     private DailyFocusStats _todayStats;
     private Task? _loopTask;
     private bool _disposed;
@@ -79,6 +80,67 @@ public sealed class PomodoroEngine : IDisposable
 
         SnapshotChanged?.Invoke(snapshot);
         return snapshot;
+    }
+
+    public PomodoroSnapshot SetFocusLabel(string? label)
+    {
+        PomodoroSnapshot snapshot;
+        lock (_lock)
+        {
+            _focusLabel = string.IsNullOrWhiteSpace(label) ? null : label.Trim();
+            EnsureTodayStatsLocked();
+            snapshot = CreateSnapshotLocked();
+        }
+
+        SnapshotChanged?.Invoke(snapshot);
+        return snapshot;
+    }
+
+    public PomodoroSnapshot ClearFocusLabel() => SetFocusLabel(null);
+
+    public PomodoroSnapshot StartCustomFocus(int minutes, string? label = null)
+    {
+        var clampedMinutes = Math.Clamp(minutes, 1, 180);
+        PomodoroSnapshot snapshot;
+        lock (_lock)
+        {
+            _phase = PomodoroPhase.Focus;
+            _currentPhaseTotal = TimeSpan.FromMinutes(clampedMinutes);
+            _remaining = _currentPhaseTotal;
+            _state = PomodoroState.Running;
+            if (!string.IsNullOrWhiteSpace(label))
+            {
+                _focusLabel = label.Trim();
+            }
+
+            EnsureTodayStatsLocked();
+            snapshot = CreateSnapshotLocked();
+        }
+
+        SnapshotChanged?.Invoke(snapshot);
+        return snapshot;
+    }
+
+    public PomodoroSnapshot HandleSessionLocked()
+    {
+        PomodoroSnapshot? snapshot = null;
+        lock (_lock)
+        {
+            if (_config.AutoPauseOnLock && _state == PomodoroState.Running && _phase == PomodoroPhase.Focus)
+            {
+                _state = PomodoroState.Paused;
+                EnsureTodayStatsLocked();
+                snapshot = CreateSnapshotLocked();
+            }
+        }
+
+        if (snapshot is not null)
+        {
+            SnapshotChanged?.Invoke(snapshot);
+            return snapshot;
+        }
+
+        return GetSnapshot();
     }
 
     public PomodoroSnapshot ToggleStartPause()
@@ -166,9 +228,6 @@ public sealed class PomodoroEngine : IDisposable
         return snapshot;
     }
 
-    /// <summary>
-    /// Starts a quick extra focus burst (e.g., "+5 min Focus" clicked from a completion toast).
-    /// </summary>
     public PomodoroSnapshot StartBonusFocus(TimeSpan duration)
     {
         if (duration <= TimeSpan.Zero)
@@ -256,10 +315,6 @@ public sealed class PomodoroEngine : IDisposable
         return snapshot;
     }
 
-    /// <summary>
-    /// Advances the timer by one second if currently running.
-    /// Exposed publicly for deterministic unit testing.
-    /// </summary>
     public void TickOneSecond()
     {
         PomodoroSnapshot? snapshotToPublish = null;
@@ -279,7 +334,10 @@ public sealed class PomodoroEngine : IDisposable
             {
                 var completed = _phase;
                 var completedMinutes = Math.Max(1, (int)Math.Round(_currentPhaseTotal.TotalMinutes));
-                var next = AdvancePhaseLocked(autoStart: _config.AutoStartNextPhase, recordFocusCompletion: true, completedFocusMinutes: completedMinutes);
+                var next = AdvancePhaseLocked(
+                    autoStart: _config.AutoStartNextPhase,
+                    recordFocusCompletion: true,
+                    completedFocusMinutes: completedMinutes);
                 if (completed == PomodoroPhase.Focus)
                 {
                     statsToSave = _todayStats;
@@ -316,11 +374,7 @@ public sealed class PomodoroEngine : IDisposable
         {
             if (recordFocusCompletion)
             {
-                _todayStats = _todayStats with
-                {
-                    CompletedFocusSessions = _todayStats.CompletedFocusSessions + 1,
-                    TotalFocusMinutes = _todayStats.TotalFocusMinutes + Math.Max(1, completedFocusMinutes)
-                };
+                _todayStats = _todayStats.RecordFocusSession(GetToday(), completedFocusMinutes);
             }
 
             _completedFocusCycles++;
@@ -346,17 +400,22 @@ public sealed class PomodoroEngine : IDisposable
 
     private void EnsureTodayStatsLocked()
     {
-        var today = GetToday();
-        if (_todayStats.Date != today)
-        {
-            _todayStats = DailyFocusStats.Empty(today);
-        }
+        _todayStats = _todayStats.ForDate(GetToday());
     }
 
     private DateOnly GetToday() => DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime);
 
     private PomodoroSnapshot CreateSnapshotLocked() =>
-        new(_phase, _state, _remaining, _currentPhaseTotal, _completedFocusCycles, _config.CyclesBeforeLongBreak, _todayStats);
+        new(
+            _phase,
+            _state,
+            _remaining,
+            _currentPhaseTotal,
+            _completedFocusCycles,
+            _config.CyclesBeforeLongBreak,
+            _todayStats,
+            _focusLabel,
+            _config.UseCycleDots);
 
     private async Task RunTickLoopAsync(CancellationToken cancellationToken)
     {

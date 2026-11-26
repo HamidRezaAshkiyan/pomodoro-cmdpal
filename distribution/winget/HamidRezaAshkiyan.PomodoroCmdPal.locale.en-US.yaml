@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+
+PackageIdentifier: HamidRezaAshkiyan.PomodoroCmdPal
+PackageVersion: 0.3.0
+PackageLocale: en-US
+Publisher: HamidReza Ashkiyan
+PublisherUrl: https://github.com/HamidRezaAshkiyan
+PublisherSupportUrl: https://github.com/HamidRezaAshkiyan/pomodoro-cmdpal/issues
+PackageName: Pomodoro Timer for Command Palette
+PackageUrl: https://github.com/HamidRezaAshkiyan/pomodoro-cmdpal
+License: MIT
+ShortDescription: Minimal Pomodoro timer for the Windows 11 PowerToys Command Palette Dock.
+Description: >-
+  A minimal, native Pomodoro timer extension for the Windows 11 PowerToys Command Palette Dock
+  featuring a live color-coded progress ring with rounded caps, completion celebration animation,
+  custom durations, focus labels, presets, auto-pause on PC lock, interactive toasts, and daily streaks.
+Tags:
+  - windows-commandpalette-extension
+  - powertoys
+  - command-palette
+  - pomodoro
+  - timer
+  - productivity
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0

@@ -84,6 +84,13 @@ jobs:
             Copy-Item $msix.FullName "release-assets\PomodoroCmdPal-$arch.msix"
           }
 
+          $hashes = Get-ChildItem "release-assets\*.msix" | ForEach-Object {
+            $h = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+            "$h  $($_.Name)"
+          }
+          $hashes | Out-File -FilePath "release-assets\SHA256SUMS.txt" -Encoding utf8
+          Get-Content "release-assets\SHA256SUMS.txt"
+
           Get-ChildItem "release-assets"
 
       - name: Upload Build Artifacts
@@ -100,14 +107,15 @@ jobs:
           body: |
             ### Minimal Pomodoro Timer for Windows 11 PowerToys Command Palette Dock
 
-            **Features:**
-            - **Live Color-Coded Progress Ring Icon** directly in the PowerToys Command Palette Dock (Coral Red for Focus, Mint Teal for Short Break, Calm Indigo for Long Break, Warm Amber when Paused)
-            - Live `MM:SS` countdown & cycle counter (`Focus • 1/4`)
-            - **Native Command Palette Settings** for custom Focus / Short Break / Long Break durations, cycles, auto-start next phase, and completion sound toggle
-            - **Quick Presets:** Classic (`25/5/15`), Deep Work (`50/10/20`), and Sprint (`15/3/10`)
-            - **`+5 min` Extend** right from the Dock context menu or completion toast
-            - **Interactive Windows 11 Toast Notifications** with clickable **Start Break / Start Focus** and **+5 min Focus** buttons
-            - **Persisted Daily Focus Stats** (`Today: N sessions • Xm focused`)
+            **Highlights in v0.3.0:**
+            - **Upgraded Dock Progress Ring UI:** Apple Watch–style rounded arc end-caps + soft radial glow
+            - **Completion Celebration Burst:** 5-frame expanding halo + checkmark animation in the Dock icon when a session finishes
+            - **Final-Minute Smooth Sweep & Urgency Pulse:** 1-second smooth ring drain + breathing center dot during the last 60 seconds
+            - **Minimal Cycle Dots (`●●○○`):** Cleaner glanceable cycle indicator in the Dock subtitle (toggleable in Settings)
+            - **Quick Custom Timer & Focus Label Search:** Type `15`, `45m`, `15 code review`, or `API refactor` in the Pomodoro page to launch a custom timer or label your Dock pill
+            - **Auto-Pause on PC Lock (`Win + L`):** Automatically pauses active Focus sessions when you lock Windows (configurable in Settings)
+            - **Daily Focus Streak:** Tracks consecutive days with completed focus sessions alongside today's count & total minutes
+            - **Interactive Windows 11 Toasts & Presets:** Clickable **Start Break / Start Focus** & **+5 min Focus** buttons, plus Classic (`25/5/15`), Deep Work (`50/10/20`), and Sprint (`15/3/10`) presets
 
             **Quick Install (Windows 11 + PowerToys 0.98+):**
             1. Download `PomodoroCmdPal-x64.msix` (or `ARM64`), `PomodoroCmdPalDev.cer`, and `install-from-release.ps1` into the same folder.
@@ -121,3 +129,4 @@ jobs:
             release-assets/PomodoroCmdPal-ARM64.msix
             release-assets/PomodoroCmdPalDev.cer
             release-assets/install-from-release.ps1
+            release-assets/SHA256SUMS.txt

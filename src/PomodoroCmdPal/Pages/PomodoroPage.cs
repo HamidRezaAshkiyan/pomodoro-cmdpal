@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using PomodoroCmdPal.Commands;
@@ -5,7 +6,7 @@ using PomodoroCmdPal.Core;
 
 namespace PomodoroCmdPal.Pages;
 
-internal sealed partial class PomodoroPage : ListPage, IDisposable
+internal sealed partial class PomodoroPage : DynamicListPage, IDisposable
 {
     private readonly PomodoroEngine _engine;
     private readonly Action<PomodoroConfig> _applyPreset;
@@ -17,20 +18,76 @@ internal sealed partial class PomodoroPage : ListPage, IDisposable
         Id = "com.pomodorocmdpal.page";
         Name = "Pomodoro Timer";
         Title = "Pomodoro Timer";
+        PlaceholderText = "Type minutes (e.g. 15) or a focus label (e.g. API refactor)...";
         Icon = new IconInfo("\uE916");
 
         _engine.SnapshotChanged += OnSnapshotChanged;
+    }
+
+    public override void UpdateSearchText(string oldSearch, string newSearch)
+    {
+        RaiseItemsChanged();
     }
 
     public override IListItem[] GetItems()
     {
         var snapshot = _engine.GetSnapshot();
         var cfg = _engine.Config;
+        var query = (SearchText ?? string.Empty).Trim();
+        var items = new List<IListItem>();
+
+        // 1. Dynamic quick-command items from SearchText (e.g. "15", "45m", "15 code review", or "API refactor")
+        if (!string.IsNullOrEmpty(query))
+        {
+            if (TryParseCustomDuration(query, out var minutes, out var label))
+            {
+                var title = string.IsNullOrWhiteSpace(label)
+                    ? $"Start {minutes}m Focus"
+                    : $"Start {minutes}m Focus — {label}";
+                var subtitle = string.IsNullOrWhiteSpace(label)
+                    ? $"Launch a one-off {minutes}-minute focus session right now"
+                    : $"Focus on \"{label}\" for {minutes} minutes";
+
+                items.Add(new ListItem(new PomodoroActionCommand(
+                    title,
+                    new IconInfo("\uE916"),
+                    () => _engine.StartCustomFocus(minutes, label)))
+                {
+                    Title = title,
+                    Subtitle = subtitle,
+                    Icon = new IconInfo("\uE916")
+                });
+            }
+            else
+            {
+                items.Add(new ListItem(new PomodoroActionCommand(
+                    $"Set Focus Label: {query}",
+                    new IconInfo("\uE8EC"),
+                    () => _engine.SetFocusLabel(query)))
+                {
+                    Title = $"Set Focus Label: \"{query}\"",
+                    Subtitle = "Show this task label in the Dock subtitle",
+                    Icon = new IconInfo("\uE8EC")
+                });
+
+                items.Add(new ListItem(new PomodoroActionCommand(
+                    $"Start Focus ({cfg.FocusMinutes}m): {query}",
+                    new IconInfo("\uE768"),
+                    () => _engine.StartCustomFocus(cfg.FocusMinutes, query)))
+                {
+                    Title = $"Start Focus ({cfg.FocusMinutes:00}:00) — {query}",
+                    Subtitle = $"Begin a {cfg.FocusMinutes}-minute focus session labeled \"{query}\"",
+                    Icon = new IconInfo("\uE768")
+                });
+            }
+        }
+
+        // 2. Standard Pomodoro controls
         var toggleLabel = snapshot.State == PomodoroState.Running ? "Pause Timer" : "Start Timer";
         var toggleGlyph = snapshot.State == PomodoroState.Running ? "\uE769" : "\uE768";
 
-        return
-        [
+        var standardItems = new List<IListItem>
+        {
             new ListItem(new PomodoroActionCommand(toggleLabel, new IconInfo(toggleGlyph), () => _engine.ToggleStartPause()))
             {
                 Title = $"{snapshot.FormattedTime} — {toggleLabel}",
@@ -90,15 +147,69 @@ internal sealed partial class PomodoroPage : ListPage, IDisposable
                 Title = "Preset: Sprint (15 / 3 / 10)",
                 Subtitle = "15m Focus, 3m Short Break, 10m Long Break",
                 Icon = new IconInfo("\uE945")
-            },
-            new ListItem(new PomodoroActionCommand("Reset All Cycles", new IconInfo("\uE777"), () => _engine.ResetAll()))
-            {
-                Title = "Reset All Cycles",
-                Subtitle = $"Reset timer to Focus ({cfg.FocusMinutes:00}:00) and cycle 1/{cfg.CyclesBeforeLongBreak}",
-                Icon = new IconInfo("\uE777")
             }
-        ];
+        };
+
+        if (!string.IsNullOrWhiteSpace(snapshot.FocusLabel))
+        {
+            standardItems.Add(new ListItem(new PomodoroActionCommand("Clear Focus Label", new IconInfo("\uE894"), () => _engine.ClearFocusLabel()))
+            {
+                Title = $"Clear Focus Label (\"{snapshot.FocusLabel}\")",
+                Subtitle = "Return Dock subtitle to default phase name",
+                Icon = new IconInfo("\uE894")
+            });
+        }
+
+        standardItems.Add(new ListItem(new PomodoroActionCommand("Reset All Cycles", new IconInfo("\uE777"), () => _engine.ResetAll()))
+        {
+            Title = "Reset All Cycles",
+            Subtitle = $"Reset timer to Focus ({cfg.FocusMinutes:00}:00) and cycle 1/{cfg.CyclesBeforeLongBreak}",
+            Icon = new IconInfo("\uE777")
+        });
+
+        if (string.IsNullOrEmpty(query))
+        {
+            items.AddRange(standardItems);
+        }
+        else
+        {
+            foreach (var item in standardItems)
+            {
+                if ((item.Title?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (item.Subtitle?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
+                {
+                    items.Add(item);
+                }
+            }
+        }
+
+        return [.. items];
     }
+
+    private static bool TryParseCustomDuration(string input, out int minutes, out string? label)
+    {
+        minutes = 0;
+        label = null;
+
+        var match = CustomDurationRegex().Match(input);
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        if (!int.TryParse(match.Groups["mins"].Value, out var parsed) || parsed < 1 || parsed > 180)
+        {
+            return false;
+        }
+
+        minutes = parsed;
+        var rest = match.Groups["label"].Value.Trim();
+        label = string.IsNullOrWhiteSpace(rest) ? null : rest;
+        return true;
+    }
+
+    [GeneratedRegex(@"^(?<mins>\d{1,3})\s*(?:m|min|mins|minutes)?(?:\s+(?<label>.+))?$", RegexOptions.IgnoreCase)]
+    private static partial Regex CustomDurationRegex();
 
     private void OnSnapshotChanged(PomodoroSnapshot _)
     {

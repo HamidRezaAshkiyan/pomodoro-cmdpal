@@ -41,6 +41,18 @@ internal sealed class PomodoroSettingsManager : JsonSettingsManager
         "Play a Windows reminder chime when a focus or break timer completes.",
         true);
 
+    private readonly ToggleSetting _useCycleDots = new(
+        "useCycleDots",
+        "Use minimal cycle dots",
+        "Show cycle progress as dots (●●○○) instead of numbers (2/4) in the Dock subtitle.",
+        true);
+
+    private readonly ToggleSetting _autoPauseOnLock = new(
+        "autoPauseOnLock",
+        "Auto-pause on PC lock (Win + L)",
+        "Automatically pause an active Focus session when you lock Windows.",
+        true);
+
     public event Action<PomodoroConfig>? ConfigChanged;
 
     public PomodoroSettingsManager()
@@ -53,6 +65,8 @@ internal sealed class PomodoroSettingsManager : JsonSettingsManager
         Settings.Add(_cyclesBeforeLongBreak);
         Settings.Add(_autoStartNextPhase);
         Settings.Add(_enableSound);
+        Settings.Add(_useCycleDots);
+        Settings.Add(_autoPauseOnLock);
 
         LoadSettings();
 
@@ -69,7 +83,9 @@ internal sealed class PomodoroSettingsManager : JsonSettingsManager
         LongBreakMinutes: ParseInt(_longBreakMinutes.Value, 15),
         CyclesBeforeLongBreak: ParseInt(_cyclesBeforeLongBreak.Value, 4),
         AutoStartNextPhase: _autoStartNextPhase.Value,
-        EnableSound: _enableSound.Value).Sanitized();
+        EnableSound: _enableSound.Value,
+        UseCycleDots: _useCycleDots.Value,
+        AutoPauseOnLock: _autoPauseOnLock.Value).Sanitized();
 
     public void ApplyPreset(PomodoroConfig preset)
     {

@@ -12,6 +12,7 @@ public sealed partial class PomodoroCommandsProvider : CommandProvider
     private readonly PomodoroSettingsManager _settingsManager;
     private readonly PomodoroEngine _engine;
     private readonly NotificationService _notifications;
+    private readonly SessionLockMonitor _lockMonitor;
     private readonly PomodoroPage _page;
     private readonly PomodoroDockBandItem _dockBand;
     private readonly ICommandItem[] _topLevelCommands;
@@ -32,6 +33,7 @@ public sealed partial class PomodoroCommandsProvider : CommandProvider
         _notifications = new NotificationService(
             onStartNext: () => _engine.Start(),
             onBonusFocusFiveMinutes: () => _engine.StartBonusFocus(TimeSpan.FromMinutes(5)));
+        _lockMonitor = new SessionLockMonitor(() => _engine.HandleSessionLocked());
 
         _engine.PhaseCompleted += OnPhaseCompleted;
         _settingsManager.ConfigChanged += OnConfigChanged;
@@ -44,7 +46,7 @@ public sealed partial class PomodoroCommandsProvider : CommandProvider
             new CommandItem(_page)
             {
                 Title = "Pomodoro Timer",
-                Subtitle = "Minimal Pomodoro timer with live Dock progress ring, presets & daily stats",
+                Subtitle = "Minimal Pomodoro timer with live Dock progress ring, focus labels, presets & streaks",
                 Icon = new IconInfo("\uE916")
             },
             _dockBand
@@ -70,6 +72,7 @@ public sealed partial class PomodoroCommandsProvider : CommandProvider
 
     private void OnPhaseCompleted(PomodoroPhase completedPhase, PomodoroPhase nextPhase)
     {
+        _dockBand.PlayCelebration(completedPhase);
         _notifications.NotifyPhaseCompleted(
             completedPhase,
             nextPhase,
@@ -81,6 +84,7 @@ public sealed partial class PomodoroCommandsProvider : CommandProvider
     {
         _settingsManager.ConfigChanged -= OnConfigChanged;
         _engine.PhaseCompleted -= OnPhaseCompleted;
+        _lockMonitor.Dispose();
         _dockBand.Dispose();
         _page.Dispose();
         _notifications.Dispose();

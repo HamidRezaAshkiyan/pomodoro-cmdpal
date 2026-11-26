@@ -20,7 +20,9 @@ public sealed record PomodoroConfig(
     int LongBreakMinutes = 15,
     int CyclesBeforeLongBreak = 4,
     bool AutoStartNextPhase = false,
-    bool EnableSound = true)
+    bool EnableSound = true,
+    bool UseCycleDots = true,
+    bool AutoPauseOnLock = true)
 {
     public static PomodoroConfig Classic => new(25, 5, 15, 4);
     public static PomodoroConfig DeepWork => new(50, 10, 20, 4);
@@ -32,7 +34,9 @@ public sealed record PomodoroConfig(
         LongBreakMinutes: Math.Clamp(LongBreakMinutes, 1, 90),
         CyclesBeforeLongBreak: Math.Clamp(CyclesBeforeLongBreak, 1, 12),
         AutoStartNextPhase: AutoStartNextPhase,
-        EnableSound: EnableSound);
+        EnableSound: EnableSound,
+        UseCycleDots: UseCycleDots,
+        AutoPauseOnLock: AutoPauseOnLock);
 
     public TimeSpan GetDuration(PomodoroPhase phase) => phase switch
     {
@@ -46,17 +50,58 @@ public sealed record PomodoroConfig(
 public sealed record DailyFocusStats(
     DateOnly Date,
     int CompletedFocusSessions,
-    int TotalFocusMinutes)
+    int TotalFocusMinutes,
+    int CurrentStreakDays = 0,
+    DateOnly? LastCompletedDate = null)
 {
-    public static DailyFocusStats Empty(DateOnly date) => new(date, 0, 0);
+    public static DailyFocusStats Empty(DateOnly date) => new(date, 0, 0, 0, null);
+
+    public DailyFocusStats ForDate(DateOnly today)
+    {
+        if (Date == today)
+        {
+            return this;
+        }
+
+        var streakAlive = LastCompletedDate.HasValue && LastCompletedDate.Value >= today.AddDays(-1);
+        return new DailyFocusStats(
+            Date: today,
+            CompletedFocusSessions: 0,
+            TotalFocusMinutes: 0,
+            CurrentStreakDays: streakAlive ? CurrentStreakDays : 0,
+            LastCompletedDate: streakAlive ? LastCompletedDate : null);
+    }
+
+    public DailyFocusStats RecordFocusSession(DateOnly today, int minutes)
+    {
+        var current = ForDate(today);
+        var nextStreak = current.LastCompletedDate switch
+        {
+            null => 1,
+            var last when last == today => Math.Max(1, current.CurrentStreakDays),
+            var last when last == today.AddDays(-1) => current.CurrentStreakDays + 1,
+            _ => 1
+        };
+
+        return new DailyFocusStats(
+            Date: today,
+            CompletedFocusSessions: current.CompletedFocusSessions + 1,
+            TotalFocusMinutes: current.TotalFocusMinutes + Math.Max(1, minutes),
+            CurrentStreakDays: nextStreak,
+            LastCompletedDate: today);
+    }
 
     public string FormattedSummary
     {
         get
         {
+            var streakSuffix = CurrentStreakDays >= 2 ? $" • {CurrentStreakDays}-day streak" : string.Empty;
+
             if (CompletedFocusSessions <= 0)
             {
-                return "No focus sessions yet today";
+                return CurrentStreakDays >= 2
+                    ? $"0 sessions today • {CurrentStreakDays}-day streak"
+                    : "No focus sessions yet today";
             }
 
             var sessionWord = CompletedFocusSessions == 1 ? "session" : "sessions";
@@ -66,7 +111,7 @@ public sealed record DailyFocusStats(
                 ? (mins > 0 ? $"{hours}h {mins}m" : $"{hours}h")
                 : $"{mins}m";
 
-            return $"{CompletedFocusSessions} {sessionWord} • {duration} focused";
+            return $"{CompletedFocusSessions} {sessionWord} • {duration}{streakSuffix}";
         }
     }
 }
@@ -78,18 +123,18 @@ public sealed record PomodoroSnapshot(
     TimeSpan TotalPhaseDuration,
     int CompletedFocusCycles,
     int CyclesBeforeLongBreak,
-    DailyFocusStats TodayStats)
+    DailyFocusStats TodayStats,
+    string? FocusLabel = null,
+    bool UseCycleDots = true)
 {
-    /// <summary>
-    /// Remaining fraction from 0.0 to 1.0 for the Dock progress ring.
-    /// </summary>
     public double Progress => TotalPhaseDuration.TotalSeconds <= 0
         ? 0.0
         : Math.Clamp(Remaining.TotalSeconds / TotalPhaseDuration.TotalSeconds, 0.0, 1.0);
 
-    /// <summary>
-    /// 1-based cycle index shown in the UI (e.g., 1/4 .. 4/4).
-    /// </summary>
+    public bool IsFinalMinute => State == PomodoroState.Running
+        && Remaining > TimeSpan.Zero
+        && Remaining <= TimeSpan.FromSeconds(60);
+
     public int CurrentCycleNumber => Phase switch
     {
         PomodoroPhase.Focus => Math.Min(CompletedFocusCycles + 1, CyclesBeforeLongBreak),
@@ -106,9 +151,25 @@ public sealed record PomodoroSnapshot(
         _ => "Focus"
     };
 
-    /// <summary>
-    /// Minimal MM:SS display string for the Dock title.
-    /// </summary>
+    public string ActiveDisplayLabel =>
+        Phase == PomodoroPhase.Focus && !string.IsNullOrWhiteSpace(FocusLabel)
+            ? TruncateLabel(FocusLabel!, 18)
+            : PhaseLabel;
+
+    public string CycleIndicator
+    {
+        get
+        {
+            if (!UseCycleDots || CyclesBeforeLongBreak > 6)
+            {
+                return $"{CurrentCycleNumber}/{CyclesBeforeLongBreak}";
+            }
+
+            var filled = Math.Clamp(CurrentCycleNumber, 1, CyclesBeforeLongBreak);
+            return new string('●', filled) + new string('○', CyclesBeforeLongBreak - filled);
+        }
+    }
+
     public string FormattedTime
     {
         get
@@ -119,12 +180,15 @@ public sealed record PomodoroSnapshot(
         }
     }
 
-    /// <summary>
-    /// Compact subtitle for the Dock band (e.g., "Focus • 1/4", "Paused • Focus").
-    /// </summary>
     public string CompactSubtitle => State switch
     {
-        PomodoroState.Paused => $"Paused • {PhaseLabel}",
-        _ => $"{PhaseLabel} • {CurrentCycleNumber}/{CyclesBeforeLongBreak}"
+        PomodoroState.Paused => $"Paused • {ActiveDisplayLabel}",
+        _ => $"{ActiveDisplayLabel} • {CycleIndicator}"
     };
+
+    private static string TruncateLabel(string value, int maxLen)
+    {
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLen ? trimmed : trimmed[..(maxLen - 1)] + "…";
+    }
 }

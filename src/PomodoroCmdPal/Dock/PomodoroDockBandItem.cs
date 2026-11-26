@@ -12,7 +12,12 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
     private readonly PomodoroPage _page;
     private readonly DockIconRenderer _iconRenderer = new();
     private readonly PomodoroActionCommand _toggleCommand;
-    private (PomodoroPhase Phase, PomodoroState State, int Step)? _lastIconKey;
+    private readonly object _animLock = new();
+
+    private (PomodoroPhase Phase, PomodoroState State, int Step, int MaxSteps, bool PulseHigh, bool IsFinalMinute)? _lastIconKey;
+    private CancellationTokenSource? _celebrationCts;
+    private bool _celebrating;
+    private bool _hasLabelInMenu;
 
     public PomodoroDockBandItem(PomodoroEngine engine, PomodoroPage page)
     {
@@ -26,7 +31,7 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
             id: "com.pomodorocmdpal.toggle");
 
         Command = _toggleCommand;
-        RebuildContextMenu();
+        RebuildContextMenu(_engine.GetSnapshot());
 
         ApplySnapshot(_engine.GetSnapshot());
         _engine.SnapshotChanged += ApplySnapshot;
@@ -34,14 +39,64 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
 
     public void RefreshContextMenuLabels()
     {
-        RebuildContextMenu();
+        RebuildContextMenu(_engine.GetSnapshot());
     }
 
-    private void RebuildContextMenu()
+    /// <summary>
+    /// Plays a brief 5-frame (~1.25s) celebration burst in the Dock icon on phase completion.
+    /// </summary>
+    public void PlayCelebration(PomodoroPhase completedPhase)
+    {
+        CancellationTokenSource cts;
+        lock (_animLock)
+        {
+            _celebrationCts?.Cancel();
+            _celebrationCts?.Dispose();
+            cts = new CancellationTokenSource();
+            _celebrationCts = cts;
+            _celebrating = true;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            const int totalFrames = 5;
+            try
+            {
+                for (var frame = 0; frame < totalFrames; frame++)
+                {
+                    cts.Token.ThrowIfCancellationRequested();
+                    Icon = _iconRenderer.CreateCelebrationIcon(completedPhase, frame, totalFrames);
+                    await Task.Delay(240, cts.Token).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            finally
+            {
+                lock (_animLock)
+                {
+                    if (_celebrationCts == cts)
+                    {
+                        _celebrating = false;
+                        _lastIconKey = null;
+                    }
+                }
+
+                ApplySnapshot(_engine.GetSnapshot());
+            }
+        });
+    }
+
+    private void RebuildContextMenu(PomodoroSnapshot snapshot)
     {
         var cfg = _engine.Config;
-        MoreCommands =
-        [
+        var hasLabel = !string.IsNullOrWhiteSpace(snapshot.FocusLabel);
+        _hasLabelInMenu = hasLabel;
+
+        var items = new List<IContextItem>
+        {
             new CommandContextItem(new PomodoroActionCommand(
                 "+5 min",
                 new IconInfo("\uE710"),
@@ -71,18 +126,31 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
                 $"Long Break ({cfg.LongBreakMinutes}m)",
                 new IconInfo("\uE708"),
                 () => _engine.SwitchPhase(PomodoroPhase.LongBreak, startImmediately: true),
-                "com.pomodorocmdpal.longbreak")),
-            new CommandContextItem(new PomodoroActionCommand(
-                "Reset All Cycles",
-                new IconInfo("\uE777"),
-                () => _engine.ResetAll(),
-                "com.pomodorocmdpal.resetall")),
-            new CommandContextItem(_page)
-            {
-                Title = "Open Pomodoro Controls",
-                Icon = new IconInfo("\uE713")
-            }
-        ];
+                "com.pomodorocmdpal.longbreak"))
+        };
+
+        if (hasLabel)
+        {
+            items.Add(new CommandContextItem(new PomodoroActionCommand(
+                "Clear Focus Label",
+                new IconInfo("\uE894"),
+                () => _engine.ClearFocusLabel(),
+                "com.pomodorocmdpal.clearlabel")));
+        }
+
+        items.Add(new CommandContextItem(new PomodoroActionCommand(
+            "Reset All Cycles",
+            new IconInfo("\uE777"),
+            () => _engine.ResetAll(),
+            "com.pomodorocmdpal.resetall")));
+
+        items.Add(new CommandContextItem(_page)
+        {
+            Title = "Open Pomodoro Controls",
+            Icon = new IconInfo("\uE713")
+        });
+
+        MoreCommands = [.. items];
     }
 
     private void ApplySnapshot(PomodoroSnapshot snapshot)
@@ -92,6 +160,20 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
         _toggleCommand.Name = snapshot.State == PomodoroState.Running
             ? "Pause Pomodoro"
             : "Start Pomodoro";
+
+        var hasLabel = !string.IsNullOrWhiteSpace(snapshot.FocusLabel);
+        if (hasLabel != _hasLabelInMenu)
+        {
+            RebuildContextMenu(snapshot);
+        }
+
+        lock (_animLock)
+        {
+            if (_celebrating)
+            {
+                return;
+            }
+        }
 
         var visualKey = _iconRenderer.GetVisualKey(snapshot);
         if (_lastIconKey != visualKey)
@@ -104,5 +186,11 @@ internal sealed partial class PomodoroDockBandItem : CommandItem, IDisposable
     public void Dispose()
     {
         _engine.SnapshotChanged -= ApplySnapshot;
+        lock (_animLock)
+        {
+            _celebrationCts?.Cancel();
+            _celebrationCts?.Dispose();
+            _celebrationCts = null;
+        }
     }
 }

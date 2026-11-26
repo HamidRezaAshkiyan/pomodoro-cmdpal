@@ -1,0 +1,8 @@
+# Created for microsoft/winget-pkgs submission (requires trusted CA or Microsoft Store signing)
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.10.0.schema.json
+
+PackageIdentifier: HamidRezaAshkiyan.PomodoroCmdPal
+PackageVersion: 0.3.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.10.0

@@ -4,12 +4,14 @@ A minimal **Pomodoro timer** built as a native **Windows 11 PowerToys Command Pa
 
 ## Features
 
-- **Live Color-Coded Progress Ring in the Dock:** Anti-aliased progress ring that drains smoothly as your timer counts down — Coral Red (`Focus`), Mint Teal (`Short Break`), Calm Indigo (`Long Break`), and Warm Amber (`Paused`) — alongside a crisp `MM:SS` countdown and compact cycle subtitle (`Focus • 1/4`).
-- **One-Click & In-Flow Controls:** Left-click the Dock band to **Start / Pause** immediately; right-click (`MoreCommands`) for **`+5 min`**, **Reset Timer**, **Skip Phase**, direct phase switches, and **Open Pomodoro Controls**.
-- **Native Command Palette Settings:** Configure Focus / Short Break / Long Break durations, cycles before long break, auto-start next phase, and completion chime right inside PowerToys Command Palette's extension settings.
-- **Quick Presets:** Switch instantly between **Classic (25/5/15)**, **Deep Work (50/10/20)**, and **Sprint (15/3/10)**.
+- **Animated Progress Ring in the Dock:** Anti-aliased progress ring with rounded arc end-caps and soft radial glow — Coral Red (`Focus`), Mint Teal (`Short Break`), Calm Indigo (`Long Break`), and Warm Amber (`Paused`).
+- **Micro-Animations:** 5-frame expanding halo + checkmark completion celebration burst at `00:00`, plus a 1-second smooth ring drain and breathing urgency pulse during the final 60 seconds.
+- **Minimal Cycle Dots & Focus Labels:** Displays `Focus • ●●○○` (or your active task label like `API refactor • ●●○○`) directly in the Dock subtitle.
+- **Quick Custom Duration & Label Search:** Open **Pomodoro Timer** in Command Palette and type `15`, `45m`, `15 code review`, or any task name to start a custom focus session or label your Dock pill immediately.
+- **One-Click & In-Flow Controls:** Left-click the Dock band to **Start / Pause**; right-click (`MoreCommands`) for **`+5 min`**, **Reset**, **Skip Phase**, direct phase switches, and **Clear Focus Label**.
+- **Native Command Palette Settings & Presets:** Custom durations, cycles, auto-start next phase, sound toggle, cycle dots toggle, and **Auto-Pause on PC Lock (`Win + L`)**, plus **Classic (25/5/15)**, **Deep Work (50/10/20)**, and **Sprint (15/3/10)** presets.
 - **Interactive Windows 11 Toast Notifications:** Click **Start Break**, **Start Focus**, or **+5 min Focus** directly from the completion notification.
-- **Daily Focus Stats:** Tracks completed focus sessions and total focus time today (persisted in `%LOCALAPPDATA%\PomodoroCmdPal\stats.json`, auto-resets daily).
+- **Daily Focus Stats & Streak:** Tracks completed focus sessions, total focus time today, and consecutive-day focus streaks (`%LOCALAPPDATA%\PomodoroCmdPal\stats.json`).
 
 ## Requirements
 
@@ -25,11 +27,14 @@ A minimal **Pomodoro timer** built as a native **Windows 11 PowerToys Command Pa
    ```
 3. Open **PowerToys Settings → Command Palette → Dock**, enable the Dock, and pin **Pomodoro Timer** to your preferred Dock region (Start, Center, or End).
 
+## Publishing to Microsoft Store / Command Palette Gallery / WinGet
+
+Ready-to-submit manifests and metadata live under `distribution/`. See [PUBLISHING.md](./PUBLISHING.md) for the exact steps (including free Microsoft Store signing for `microsoft/CmdPal-Extensions`).
+
 ## Build from Source (Windows 11)
 
 Requires [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and Windows 10/11 SDK.
 
 ```powershell
-# Run tests, self-sign, build MSIX, and install
 .\scripts\build-and-install.ps1
 ```

@@ -43,15 +43,19 @@ internal sealed class NotificationService : IDisposable
             return;
         }
 
+        var labelPrefix = !string.IsNullOrWhiteSpace(snapshot.FocusLabel)
+            ? $"\"{snapshot.FocusLabel}\" complete! "
+            : string.Empty;
+
         var (title, body, startButtonLabel) = (completedPhase, nextPhase) switch
         {
             (PomodoroPhase.Focus, PomodoroPhase.LongBreak) => (
                 "Focus Complete — Long Break!",
-                $"All {snapshot.CyclesBeforeLongBreak} focus cycles done ({snapshot.TodayStats.FormattedSummary}). Take a {snapshot.FormattedTime} long break.",
+                $"{labelPrefix}All {snapshot.CyclesBeforeLongBreak} focus cycles done ({snapshot.TodayStats.FormattedSummary}). Take a {snapshot.FormattedTime} long break.",
                 $"Start Long Break ({snapshot.FormattedTime})"),
             (PomodoroPhase.Focus, _) => (
                 $"Focus Complete ({snapshot.CompletedFocusCycles}/{snapshot.CyclesBeforeLongBreak})",
-                $"Nice work! {snapshot.TodayStats.FormattedSummary}. Time for a {snapshot.FormattedTime} short break.",
+                $"{labelPrefix}{snapshot.TodayStats.FormattedSummary}. Time for a {snapshot.FormattedTime} short break.",
                 $"Start Break ({snapshot.FormattedTime})"),
             (PomodoroPhase.LongBreak, _) => (
                 "Long Break Finished",

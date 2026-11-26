@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+
+PackageIdentifier: HamidRezaAshkiyan.PomodoroCmdPal
+PackageVersion: 0.3.0
+Platform:
+  - Windows.Desktop
+MinimumOSVersion: 10.0.19041.0
+InstallerType: msix
+PackageFamilyName: PomodoroCmdPal_REPLACE_WITH_TRUSTED_PUBLISHER_HASH
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/HamidRezaAshkiyan/pomodoro-cmdpal/releases/download/v0.3.0/PomodoroCmdPal-x64.msix
+    InstallerSha256: REPLACE_FROM_RELEASE_SHA256SUMS_TXT
+    SignatureSha256: REPLACE_WITH_TRUSTED_MSIX_SIGNATURE_SHA256
+  - Architecture: arm64
+    InstallerUrl: https://github.com/HamidRezaAshkiyan/pomodoro-cmdpal/releases/download/v0.3.0/PomodoroCmdPal-ARM64.msix
+    InstallerSha256: REPLACE_FROM_RELEASE_SHA256SUMS_TXT
+    SignatureSha256: REPLACE_WITH_TRUSTED_MSIX_SIGNATURE_SHA256
+ManifestType: installer
+ManifestVersion: 1.10.0
